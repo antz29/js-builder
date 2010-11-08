@@ -3,7 +3,6 @@ package com.jsbuilder;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Hashtable;
 import java.util.Scanner;
@@ -13,239 +12,55 @@ import java.util.regex.Pattern;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.DirectoryScanner;
+import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.types.FileSet;
 
 public class Builder extends Task {
 
-	public class Module implements Comparable<Module> {
-
-		private Package pkg;
-		private String name;
-		private File file;
-		private Vector<Module> deps = new Vector<Module>();
-		private String[] udeps;
-
-		public Module setPackage(Package pkg) {
-			this.pkg = pkg;
-			return this;
-		}
-
-		public Package getPackage() {
-			return this.pkg;
-		}
-
-		public Module setName(String name) {
-			this.name = name;
-			return this;
-		}
-
-		public Module setUnresolvedDeps(String[] deps) {
-			this.udeps = deps;
-			return this;
-		}
-
-		public String getName() {
-			return name;
-		}
-
-		public Integer totalDeps() {
-			return deps.size();
-		}
-
-		public boolean dependsOn(Module module) {
-			getProject().log(this + " depends on " + module);
-			for (Module dep : deps) {
-				getProject().log("\t" + module + " equals " + dep + " = " + module.equals(dep));
-				if (module.equals(dep)) return true;
-			}
-			return false;
-		}
-
-		public void resolveDeps() {
-			if (udeps == null)
-				return;
-			for (String dep : udeps) {
-				if (!dep.contains(":"))
-					dep = this.getPackage().getName() + ":" + dep;
-				Module find_module = this.getPackage().getBuilder()
-						.findModule(dep);
-				if (find_module != null) {
-					deps.add(find_module);
-				} else {
-					getProject().log(
-							"Unable to resolve dependency "
-									+ this.getPackage().getName() + ":"
-									+ this.getName() + " > " + dep);
-				}
-			}
-		}
-
-		public Module setFile(File file) {
-			this.file = file;
-			return this;
-		}
-
-		public File getFile() {
-			return this.file;
-		}
-
-		public Vector<Module> getDeps()
-		{
-			return deps;
-		}
-		
-		public String toString()
-		{
-			return this.getPackage().getName() + ":" + this.getName();
-		}
-		
-		@Override
-		public int hashCode() {
-			final int prime = 31;
-			int result = 1;
-			result = prime * result + getOuterType().hashCode();
-			result = prime * result + ((file == null) ? 0 : file.hashCode());
-			result = prime * result + ((name == null) ? 0 : name.hashCode());
-			result = prime * result + ((pkg == null) ? 0 : pkg.hashCode());
-			return result;
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (this == obj)
-				return true;
-			if (obj == null)
-				return false;
-			if (getClass() != obj.getClass())
-				return false;
-			Module other = (Module) obj;
-			if (!getOuterType().equals(other.getOuterType()))
-				return false;
-			if (file == null) {
-				if (other.file != null)
-					return false;
-			} else if (!file.equals(other.file))
-				return false;
-			if (name == null) {
-				if (other.name != null)
-					return false;
-			} else if (!name.equals(other.name))
-				return false;
-			if (pkg == null) {
-				if (other.pkg != null)
-					return false;
-			} else if (!pkg.equals(other.pkg))
-				return false;
-			return true;
-		}
-
-		@Override
-		public int compareTo(Module module) {
-			
-			if (this.equals(module)) return 0;	
-			if (this.totalDeps().equals(0) && module.totalDeps().equals(0)) return 0;
-			
-			if (this.dependsOn(module)) return 1;
-			if (module.dependsOn(this)) return -1;
-			
-			return (this.totalDeps() - module.totalDeps());
-		}
-
-		private Builder getOuterType() {
-			return Builder.this;
-		}
-	}
-
-	public class Package {
-		@Override
-		public int hashCode() {
-			final int prime = 31;
-			int result = 1;
-			result = prime * result + getOuterType().hashCode();
-			result = prime * result + ((name == null) ? 0 : name.hashCode());
-			return result;
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (this == obj)
-				return true;
-			if (obj == null)
-				return false;
-			if (getClass() != obj.getClass())
-				return false;
-			Package other = (Package) obj;
-			if (!getOuterType().equals(other.getOuterType()))
-				return false;
-			if (name == null) {
-				if (other.name != null)
-					return false;
-			} else if (!name.equals(other.name))
-				return false;
-			return true;
-		}
-
-		private Builder builder;
-		private String name;
-		private Vector<Module> modules = new Vector<Builder.Module>();
-
-		public Package setBuilder(Builder builder) {
-			this.builder = builder;
-			return this;
-		}
-
-		public Builder getBuilder() {
-			return this.builder;
-		}
-
-		public Package setName(String name) {
-			this.name = name;
-			return this;
-		}
-
-		public String getName() {
-			return name;
-		}
-
-		public Module addModule(String name, File file) {
-			Module new_module = new Module().setName(name).setFile(file)
-					.setPackage(this);
-
-			int find_module = modules.indexOf(new_module);
-
-			if (find_module == -1) {
-				this.modules.add(new_module);
-				return new_module;
-			}
-
-			return modules.get(find_module);
-		}
-
-		public Vector<Module> getModules() {
-			return this.modules;
-		}
-
-		private Builder getOuterType() {
-			return Builder.this;
-		}
-
-	}
-
+	public static final int MODE_DEV = 1;
+	public static final int MODE_PROD = 2;
+	
 	private Vector<FileSet> filesets = new Vector<FileSet>();
 	private Vector<Package> packages = new Vector<Package>();
 
-	private String mode = "prod";
+	private int mode = MODE_PROD;
 	private File output;
+	
+	private RendererLoader renderer_loader;
 
-	public void setMode(String mode) {
-		this.mode = mode;
+	public Project getAntProject() {
+		return getProject();
+	}
+
+	public int getMode() {
+		return mode;
+	}
+	
+	public File getOutput() {
+		return output;
+	}
+	
+	public void setMode(String mode) throws BuildException {
+		if (mode.equals("prod")) {
+			this.mode = MODE_PROD;
+		}
+		else if (mode.equals("dev")) {
+			this.mode = MODE_DEV;
+		}
+		else {
+			throw new BuildException("Invalid mode: " + mode + " - User either 'dev' or 'prod'");
+		}
 	}
 
 	public void setOutput(File output) {
 		this.output = output;
 	}
-
+	
+	public void addRenderer(RendererLoader loader) {
+		renderer_loader = loader;
+	}
+	
 	public void addFileSet(FileSet fileset) {
 		if (!filesets.contains(fileset))
 			filesets.add(fileset);
@@ -389,14 +204,87 @@ public class Builder extends Task {
 		for (Package pkg : packages) {
 			for (Module mod : pkg.getModules()) {
 				mod.resolveDeps();
-
 				order.add(mod);
 			}
+		}
+
+		Collections.sort(order);
+
+		return order;
+	}
+
+	private Vector<Module> verifyLoadOrder(Vector<Module> order) {
+
+		Vector<Module> bad_order = testLoadOrder(order);
+
+		int sanity = 0;
+
+		while (bad_order.size() > 0 && sanity < 10) {
+			sanity++;
+			order = fixLoadOrder(order, bad_order);
+			bad_order = testLoadOrder(order);
+		}
+
+		if (bad_order.size() > 0) {
+			getProject()
+					.log("Failed to resolve dependencies for all modules (possible circular dependency?)");
+			getProject().log("These modules have problems: " + bad_order);
 		}
 
 		return order;
 	}
 
+	private Vector<Module> testLoadOrder(Vector<Module> order) {
+		Vector<Module> order_test = new Vector<Module>();
+		Vector<Module> bad_order = new Vector<Module>();
+
+		for (Module mod : order) {
+			order_test.add(mod);
+			for (Module dep : mod.getDeps()) {
+				if (!order_test.contains(dep)) {
+					bad_order.add(mod);
+				}
+			}
+		}
+
+		return bad_order;
+	}
+
+	private Integer getCorrectPosition(Vector<Module> order, Module mod) {
+		Vector<Integer> dep_locs = new Vector<Integer>();
+		Vector<Module> deps = mod.getDeps();
+
+		for (Module dep : deps) {
+			int loc = order.indexOf(dep);
+			if (loc == -1) {
+				getProject().log(mod + " has unresolvable dependency: " + dep);
+				return 0;
+			}
+			dep_locs.add(loc);
+		}
+
+		Collections.sort(dep_locs);
+
+		return dep_locs.lastElement();
+	}
+
+	private Vector<Module> fixLoadOrder(Vector<Module> order,
+			Vector<Module> bad_order) {
+
+		for (Module mod : bad_order) {
+			int location = order.indexOf(mod);
+			order.remove(location);
+			int new_location = getCorrectPosition(order, mod);
+			order.add((new_location + 1), mod);
+		}
+
+		return order;
+	}
+
+	private Renderer getRenderer() {
+		return renderer_loader.loadRenderer();
+	}
+	
 	public void execute() throws BuildException {
 
 		Vector<File> files = getFiles();
@@ -409,23 +297,12 @@ public class Builder extends Task {
 		parsePackages(files);
 
 		Vector<Module> order = getLoadOrder();
-		Collections.sort(order);
-
-		Vector<Module> order_test = new Vector<Module>();
+		order = verifyLoadOrder(order);
+				
+		Renderer renderer = getRenderer();
 		
-		for (Module mod : order) {
-			order_test.add(mod);
-			getProject().log(
-					mod + ":" + mod.totalDeps() + " - " + mod.getDeps().toString());
-			for (Module dep : mod.getDeps()) {
-				if (order_test.contains(dep)) {
-					getProject().log("\tFOUND DEP: " + dep);
-				}
-				else {
-					getProject().log("\tNOT FOUND DEP: " + dep);
-				}
-			}
-		}
-
+		renderer.setBuilder(this);		
+		renderer.renderPackages(packages, order);
+		renderer.renderRules(packages, order);
 	}
 }
