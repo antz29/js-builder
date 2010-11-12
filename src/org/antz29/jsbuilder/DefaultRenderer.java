@@ -28,7 +28,7 @@ public class DefaultRenderer implements Renderer {
 	protected final void compileFile(File source,File target) throws IOException
 	{
 		CompilationLevel compilationLevel = CompilationLevel.SIMPLE_OPTIMIZATIONS;
-		WarningLevel warningLevel = WarningLevel.DEFAULT;
+		WarningLevel warningLevel = WarningLevel.QUIET;
 		
 		Compiler.setLoggingLevel(Level.OFF);
 		
@@ -60,18 +60,17 @@ public class DefaultRenderer implements Renderer {
 			sources = files.toArray(new JSSourceFile[files.size()]);
 		}
 		
-		builder.log("Compiling: " + source.getAbsolutePath());
 		Result result = compiler.compile(externs, sources, options);
 		
 		if (result.success) {
 			try {
 				FileUtils.write(target, compiler.toSource(), "UTF-8");
 			} catch (IOException e) {
-				builder.getAntProject().log("Failed to write compiled source to file.");
+				builder.getAntProject().log("WARNING: Failed to write compiled source to file.");
 				e.printStackTrace();
 			}
 		} else {		
-			throw new BuildException("Compilation failed.");
+			throw new BuildException("WARNING: Compilation failed.");
 		}
 	}
 
@@ -90,7 +89,7 @@ public class DefaultRenderer implements Renderer {
 			writeAndCompile(source_file, target_path, compile);
 			source_file.delete();			
 		} catch (IOException e) {
-			builder.getAntProject().log("Failed writing to file '" + target_path + "' due to IOException.");
+			builder.getAntProject().log("WARNING: Failed writing to file '" + target_path + "' due to IOException.");
 			e.printStackTrace();			
 		}
 	}	
@@ -115,7 +114,7 @@ public class DefaultRenderer implements Renderer {
 				FileUtils.copyFile(source, target);
 			}
 		} catch (IOException e) {
-			builder.getAntProject().log("Failed writing to file '" + target_path + "' due to IOException.");
+			builder.getAntProject().log("WARNING: Failed writing to file '" + target_path + "' due to IOException.");
 			e.printStackTrace();
 		}
 	}
@@ -148,7 +147,7 @@ public class DefaultRenderer implements Renderer {
 			writeAndCompile(sb.toString(),target_path);
 			
 		} catch (IOException e) {
-			builder.getAntProject().log("Failed to render package due to IOException.");
+			builder.getAntProject().log("WARNING: Failed to render package due to IOException.");
 			e.printStackTrace();
 		}	
 	}

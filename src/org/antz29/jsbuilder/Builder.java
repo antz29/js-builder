@@ -183,19 +183,14 @@ public class Builder extends Task {
 		for (File file : files) {
 			Hashtable<String, String[]> tokens = parseFile(file);
 
-			getProject().log("\nFile: " + file.getName());
-
 			if (tokens.get("MODULE") == null) {
-				getProject().log("No MODULE token.");
+				getProject().log("WARNING: " + file.getName() + " has no MODULE token. Ignoring file.");
 				continue;
 			}
 
 			String module_name = tokens.get("MODULE")[0];
 			String package_name = (tokens.get("PACKAGE") != null) ? tokens
 					.get("PACKAGE")[0] : getProject().getName();
-
-			getProject().log("Package: " + package_name);
-			getProject().log("Module: " + module_name);
 
 			Package pkg = addPackage(package_name);
 			Module mod = pkg.addModule(module_name, file);
@@ -236,8 +231,8 @@ public class Builder extends Task {
 
 		if (bad_order.size() > 0) {
 			getProject()
-					.log("Failed to resolve dependencies for all modules (possible circular dependency?)");
-			getProject().log("These modules have problems: " + bad_order);
+					.log("WARNING: Failed to resolve dependencies for all modules (possible circular dependency?\n" +
+							"These modules have problems: " + bad_order);
 		}
 
 		return order;
@@ -266,7 +261,7 @@ public class Builder extends Task {
 		for (Module dep : deps) {
 			int loc = order.indexOf(dep);
 			if (loc == -1) {
-				getProject().log(mod + " has unresolvable dependency: " + dep);
+				getProject().log("WARNING: " + mod + " has unresolvable dependency: " + dep);
 				return 0;
 			}
 			dep_locs.add(loc);

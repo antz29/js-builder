@@ -40,14 +40,14 @@ public class Module implements Comparable<Module> {
 		return deps.size();
 	}
 
-	private Project getProject()
-	{
+	private Project getProject() {
 		return this.getPackage().getBuilder().getAntProject();
 	}
-	
+
 	public boolean dependsOn(Module module) {
 		for (Module dep : deps) {
-			if (module.equals(dep)) return true;
+			if (module.equals(dep))
+				return true;
 		}
 		return false;
 	}
@@ -58,13 +58,12 @@ public class Module implements Comparable<Module> {
 		for (String dep : udeps) {
 			if (!dep.contains(":"))
 				dep = this.getPackage().getName() + ":" + dep;
-			Module find_module = this.getPackage().getBuilder()
-					.findModule(dep);
+			Module find_module = this.getPackage().getBuilder().findModule(dep);
 			if (find_module != null) {
 				deps.add(find_module);
 			} else {
 				getProject().log(
-						"Unable to resolve dependency "
+						"WARNING: Unable to resolve dependency "
 								+ this.getPackage().getName() + ":"
 								+ this.getName() + " > " + dep);
 			}
@@ -80,13 +79,11 @@ public class Module implements Comparable<Module> {
 		return this.file;
 	}
 
-	public Vector<Module> getDeps()
-	{
+	public Vector<Module> getDeps() {
 		return deps;
 	}
-	
-	public String toString()
-	{
+
+	public String toString() {
 		return this.getPackage().getName() + ":" + this.getName();
 	}
 
@@ -129,8 +126,10 @@ public class Module implements Comparable<Module> {
 
 	@Override
 	public int compareTo(Module module) {
-		if (this.equals(module)) return 0;	
-		if (this.totalDeps().equals(0) && module.totalDeps().equals(0)) return 0;
+		if (this.equals(module))
+			return 0;
+		if (this.totalDeps().equals(0) && module.totalDeps().equals(0))
+			return 0;
 		return (this.totalDeps() - module.totalDeps());
 	}
 }
