@@ -1,56 +1,44 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <project name="jsbuilder" basedir="." default="build">
 
-    <property name="src.dir" value="src"/>
-	<property name="plugins.dir" value="plugins"/>
-	<property name="build.dir" value="build"/>
-    <property name="classes.dir" value="${build.dir}/classes"/>
-	<property name="plugins.build.dir" value="${build.dir}/plugins"/>
-    <property name="plugins.classes.dir" value="${plugins.build.dir}/classes"/>
+	<property name="src.dir" value="src" />
+	<property name="lib.dir" value="lib" />
+	<property name="build.dir" value="build" />
+	<property name="classes.dir" value="${build.dir}/classes" />
+	<property name="build.lib.dir" value="${build.dir}/lib" />
 
-    <target name="clean" description="Delete all generated files">
-        <delete dir="${build.dir}" failonerror="false"/>
-    </target>
+	<target name="clean" description="Delete all generated files">
+		<delete dir="${build.dir}" failonerror="false" />
+	</target>
 
-    <target name="compile" description="Compiles the Task">
-        <mkdir dir="${classes.dir}"/>
-        <javac includeantruntime="true" srcdir="${src.dir}" destdir="${classes.dir}" classpath="lib/ext/org.xeustechnologies.jcl;lib/ext/org.apache.commons" />
-    </target>
-	
-    <target name="compile.plugins" description="Compiles the Plugins">
-    	<mkdir dir="${plugins.classes.dir}"/>
-        <javac includeantruntime="true" srcdir="${plugins.dir}" destdir="${plugins.classes.dir}" classpath="${build.dir}/${ant.project.name}.jar" />
-    </target>
+	<target name="compile" description="Compiles the Task">
+		<mkdir dir="${classes.dir}" />
+		<javac includeantruntime="true" srcdir="${src.dir}" destdir="${classes.dir}" classpath="${lib.dir}/commons-io.jar;${lib.dir}/log4j.jar;${lib.dir}/jcl-core.jar;${lib.dir}/compiler.jar" />
+	</target>
 
-    <target name="integrate.jcl" description="Move JCL the main classes dir." depends="compile">
-    	<copy todir="${classes.dir}">
-    	    <fileset dir="lib/ext/org.xeustechnologies.jcl" />
-    	  </copy>
-    </target>
-	
-    <target name="integrate.log4j" description="Move log4j the main classes dir." depends="compile">
-    	<copy todir="${classes.dir}">
-    	    <fileset dir="lib/ext/org.apache.log4j" />
-    	  </copy>
-    </target>
-	
-    <target name="integrate.commons" description="Move Apache commons the main classes dir." depends="compile">
-    	<copy todir="${classes.dir}">
-    	    <fileset dir="lib/ext/org.apache.commons" />
-    	  </copy>
-    </target>
-	
-	<target name="integrate" depends="integrate.jcl,integrate.log4j,integrate.commons" />
-	
-    <target name="jar" description="JARs the Task" depends="compile">
-        <jar destfile="${build.dir}/${ant.project.name}.jar" basedir="${classes.dir}"/>
-    </target>
-	
-    <target name="jar.plugins" description="JARs the Plugins" depends="compile.plugins">
-        <jar destfile="${build.dir}/${ant.project.name}.plugins.jar" basedir="${plugins.classes.dir}"/>
-    </target>
-	
-	<target name="build" depends="clean,compile,integrate,jar" />
-	<target name="build.plugins" depends="build,compile.plugins,jar.plugins" />
-	<target name="only.build.plugins" depends="compile.plugins,jar.plugins" />
+	<target name="jar" description="JARs the Task" depends="compile">
+		<mkdir dir="${build.dir}/jar" />
+		<mkdir dir="${build.dir}/jar/lib" />
+
+		<unzip src="${lib.dir}/jcl-core.jar" dest="${build.dir}/jar" />
+		<unzip src="${lib.dir}/log4j.jar" dest="${build.dir}/jar" />		
+		<unzip src="${lib.dir}/commons-io.jar" dest="${build.dir}/jar" />
+		<unzip src="${lib.dir}/compiler.jar" dest="${build.dir}/jar" />
+
+		<copy todir="${build.dir}/jar">
+			<fileset dir="${classes.dir}" />
+		</copy>
+
+		<delete dir="${build.dir}/jar/META-INF"/>
+		
+		<jar flattenAttributes="true" destfile="${build.dir}/${ant.project.name}.jar" basedir="${build.dir}/jar">
+			<manifest>
+				<attribute name="Built-By" value="${user.name}" />
+			</manifest>
+		</jar>
+
+		<delete dir="${build.dir}/jar"/>
+	</target>
+
+	<target name="build" depends="clean,compile,jar" />
 </project>
