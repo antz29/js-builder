@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="my-project" basedir=".">
+
+	<property name="src.dir" value="src" />
+    <property name="lib.dir" value="lib" />
+	<property name="build.dir" value="build" />	
+	<property name="jsbuilder" location="tools/jsbuilder.jar" />
+	
+	<taskdef name="jsbuilder" classname="org.antz29.jsbuilder.Builder" classpath="${jsbuilder}" />
+    
+	<target name="init" description="Create the build dir">
+	    <mkdir dir="${build.dir}" />
+	</target>
+
+	<target name="simple" description="A simple setup using default settings" depends="init">
+	    
+	    <delete dir="${build.dir}/simple" failonerror="false" />
+	    
+		<jsbuilder output="${build.dir}/simple">
+			<fileset dir="${src.dir}/simple">
+				<include name="**/*.js"/>
+			</fileset>
+		</jsbuilder>		
+	</target>
+    
+	<target name="static.modules" description="Extending the last example to include static modules." depends="init">				
+		
+	    <delete dir="${build.dir}/static.modules" failonerror="false" />
+	    
+	    <jsbuilder output="${build.dir}/static.modules">			
+			<fileset dir="${src.dir}/static.modules">
+				<include name="**/*.js"/>
+			</fileset>
+						
+			<module package='lib' name='jquery' file='${lib.dir}/jquery.js' />
+		</jsbuilder>		
+	</target>
+    
+	<target name="dominoes" description="Extending the last example but using the DominoesRenderer." depends="init">
+	    
+	    <delete dir="${build.dir}/dominoes" failonerror="false" />
+	    
+		<jsbuilder mode="dev" output="${build.dir}/dominoes">			
+			<fileset dir="${src.dir}/static.modules">
+				<include name="**/*.js"/>
+			</fileset>
+			
+		    <renderer class="org.antz29.jsbuilder.plugins.DominoesRenderer" />
+		    
+			<module package='lib' name='jquery' file='${lib.dir}/jquery.js' />		    
+		</jsbuilder>
+	</target>
+
+</project>
