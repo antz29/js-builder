@@ -10,6 +10,7 @@ import java.util.Vector;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 
+import org.antz29.jsbuilder.utils.StringUtils;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.DirectoryScanner;
 import org.apache.tools.ant.Project;
@@ -126,15 +127,6 @@ public class Builder extends Task {
 		return out;
 	}
 
-	private static String[] trim(String[] strings) {
-		for (int i = 0, length = strings.length; i < length; i++) {
-			if (strings[i] != null) {
-				strings[i] = strings[i].trim();
-			}
-		}
-		return strings;
-	}
-
 	private Hashtable<String, String[]> parseFile(File file) {
 
 		Hashtable<String, String[]> tokens = new Hashtable<String, String[]>();
@@ -154,7 +146,7 @@ public class Builder extends Task {
 			while (next_token != null) {
 				MatchResult match = scanner.match();
 
-				String[] value = trim(match.group(2).split(","));
+				String[] value = StringUtils.trimArray(match.group(2).split(","));
 				String token = match.group(1).trim();
 				tokens.put(token, value);
 
