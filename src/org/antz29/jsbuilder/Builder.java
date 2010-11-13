@@ -24,6 +24,7 @@ public class Builder extends Task {
 	
 	private Vector<FileSet> filesets = new Vector<FileSet>();
 	private Vector<Package> packages = new Vector<Package>();
+	private Vector<StaticModule> static_modules = new Vector<StaticModule>();
 
 	private boolean compile = true;
 	private int mode = MODE_PROD;
@@ -69,6 +70,10 @@ public class Builder extends Task {
 	
 	public void addRenderer(RendererLoader loader) {
 		renderer_loader = loader;
+	}
+	
+	public void addModule(StaticModule module) {
+		static_modules.add(module);
 	}
 	
 	public void addFileSet(FileSet fileset) {
@@ -158,7 +163,7 @@ public class Builder extends Task {
 		}
 	}
 
-	private Package addPackage(String name) {
+	public Package addPackage(String name) {
 		Package new_package = new Package().setName(name).setBuilder(this);
 
 		int find_package = packages.indexOf(new_package);
@@ -277,6 +282,14 @@ public class Builder extends Task {
 		return order;
 	}
 
+	public void addStaticModule(StaticModule sm) {
+		Package pkg = this.addPackage(sm.getPackage());
+		Module mod = pkg.addModule(sm.getName(), sm.getFile());
+		mod.setUnresolvedDeps(sm.getDependencies());
+		
+		this.log("Added static module " + sm.getPackage() + ":" + sm.getName());
+	}
+	
 	private Renderer getRenderer() {
 		return renderer_loader.loadRenderer();
 	}
@@ -287,10 +300,18 @@ public class Builder extends Task {
 		getProject().log("Mode: " + mode);
 		getProject().log("Output: " + output.getAbsolutePath());
 		getProject().log("Processing " + files.size() + " file(s)");
+		if (static_modules.size() > 0) {
+			getProject().log("Defined " + static_modules.size() + " static module(s)");
+		}
 		getProject().log("\n");
-
+		
+		for (StaticModule sm : static_modules)
+		{
+			this.addStaticModule(sm);
+		}
+		
 		parsePackages(files);
-
+		
 		Vector<Module> order = getLoadOrder();
 		order = verifyLoadOrder(order);
 		
