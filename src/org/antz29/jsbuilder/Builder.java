@@ -305,7 +305,7 @@ public class Builder extends Task {
 		Renderer renderer;
 		if (renderer_loader == null)
 		{
-			renderer = new DominoesRenderer();
+			renderer = new DefaultRenderer();
 		}
 		else {
 			renderer = getRenderer();
