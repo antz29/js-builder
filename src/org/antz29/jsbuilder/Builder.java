@@ -138,7 +138,7 @@ public class Builder extends Task {
 		Scanner scanner;
 
 		Pattern pattern = Pattern
-				.compile("#(PACKAGE|MODULE|DEPENDS):([0-9a-z.,:!\040]*)");
+				.compile("#(PACKAGE|MODULE|DEPENDS):([-._:A-Za-z0-9,\040]*)");
 
 		try {
 			scanner = new Scanner(new FileInputStream(file), "UTF-8");
