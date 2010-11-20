@@ -6,7 +6,7 @@
 	<property name="build.dir" value="build" />	
 	<property name="jsbuilder" location="tools/jsbuilder.jar" />
 	
-	<taskdef name="jsbuilder" classname="org.antz29.jsbuilder.Builder" classpath="${jsbuilder}" />
+	<taskdef name="jsbuilder" classname="org.antz29.jsbuilder.ant.BuilderTask" classpath="${jsbuilder}" />
     
 	<target name="init" description="Create the build dir">
 	    <mkdir dir="${build.dir}" />
@@ -16,39 +16,82 @@
 	    
 	    <delete dir="${build.dir}/simple" failonerror="false" />
 	    
-		<jsbuilder output="${build.dir}/simple">
-			<fileset dir="${src.dir}/simple">
-				<include name="**/*.js"/>
-			</fileset>
-		</jsbuilder>		
+		<jsbuilder dir="${build.dir}/simple" pattern="simple.js">
+			<source path="${src.dir}/simple" />
+		</jsbuilder>
+	</target>
+    
+	<target name="simple.compile" description="A simple setup using the integrated closure compiler" depends="init">
+	    
+	    <delete dir="${build.dir}/simple" failonerror="false" />
+	    
+		<jsbuilder dir="${build.dir}/simple" pattern="simple.min.js">
+			<source path="${src.dir}/simple" />
+		</jsbuilder>
 	</target>
     
 	<target name="static.modules" description="Extending the last example to include static modules." depends="init">				
 		
 	    <delete dir="${build.dir}/static.modules" failonerror="false" />
 	    
-	    <jsbuilder output="${build.dir}/static.modules">			
-			<fileset dir="${src.dir}/static.modules">
-				<include name="**/*.js"/>
-			</fileset>
-						
+	    <jsbuilder dir="${build.dir}/static.modules" pattern="modules.js">
+			<source path="${src.dir}/static.modules" />						
 			<module package='lib' name='jquery' file='${lib.dir}/jquery.js' />
 		</jsbuilder>		
 	</target>
     
-	<target name="dominoes" description="Extending the last example but using the DominoesRenderer." depends="init">
+	<target name="static.compile" description="Extending the last example adding closure compilation." depends="init">				
+		 
+	    <delete dir="${build.dir}/static.modules.compile" failonerror="false" />
 	    
-	    <delete dir="${build.dir}/dominoes" failonerror="false" />
+	    <jsbuilder dir="${build.dir}/static.modules.compile" pattern="modules.min.js">
+			<source path="${src.dir}/static.modules" />						
+			<module package='lib' name='jquery' file='${lib.dir}/jquery.js' />
+		</jsbuilder>		
+	</target>
+    
+	<target name="static.dominoes" description="Extending the last example to include the DominoesJS processor." depends="init">    
+		
+	    <delete dir="${build.dir}/static.dominoes" failonerror="false" />
 	    
-		<jsbuilder mode="dev" output="${build.dir}/dominoes">			
-			<fileset dir="${src.dir}/static.modules">
-				<include name="**/*.js"/>
-			</fileset>
-			
-		    <renderer class="org.antz29.jsbuilder.plugins.DominoesRenderer" />
-		    
-			<module package='lib' name='jquery' file='${lib.dir}/jquery.js' />		    
+	    <jsbuilder dir="${build.dir}/static.dominoes" pattern="modules.min.js">
+			<source path="${src.dir}" />
+		    <module package='lib' name='jquery' file='${lib.dir}/jquery.js' />
+			<plugin class="org.antz29.jsbuilder.plugins.processor.DominoesProcessor" />
 		</jsbuilder>
 	</target>
-
+    
+	<target name="static.package.files" description="Extending the last example to generate one file per package." depends="init">    
+		
+	    <delete dir="${build.dir}/static.package.files" failonerror="false" />
+	    
+	    <jsbuilder dir="${build.dir}/static.package.files" pattern="{PACKAGE}.min.js">
+			<source path="${src.dir}/static.modules" />
+		    <module package='lib' name='jquery' file='${lib.dir}/jquery.js' />
+			<plugin class="org.antz29.jsbuilder.plugins.processor.DominoesProcessor" />
+		</jsbuilder>
+	</target>
+    
+	<target name="static.module.files" description="Extending the last example to generate one file per module." depends="init">    
+		
+	    <delete dir="${build.dir}/static.module.files" failonerror="false" />
+	    
+	    <jsbuilder dir="${build.dir}/static.module.files" pattern="{MODULE}.min.js">
+			<source path="${src.dir}/static.modules" />
+		    <module package='lib' name='jquery' file='${lib.dir}/jquery.js' />
+			<plugin class="org.antz29.jsbuilder.plugins.processor.DominoesProcessor" />
+		</jsbuilder>
+	</target>
+    
+	<target name="static.module.package.files" description="Extending the last example to generate one file per module each in a package directory." depends="init">    
+		
+	    <delete dir="${build.dir}/static.module.package.files" failonerror="false" />
+	    
+	    <jsbuilder dir="${build.dir}/static.module.package.files" pattern="{PACKAGE}/{MODULE}.min.js">
+			<source path="${src.dir}/static.modules" />
+		    <module package='lib' name='jquery' file='${lib.dir}/jquery.js' />
+			<plugin class="org.antz29.jsbuilder.plugins.processor.DominoesProcessor" />
+		</jsbuilder>
+	</target>
+    
 </project>
