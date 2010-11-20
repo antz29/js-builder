@@ -38,7 +38,7 @@
 		</jar>
 	</target>
 
-    <target name="update.example" description="Updates the example withe the latest build." depends="build">
+    <target name="update.example" description="Updates the example withe the latest build." depends="build.partial">
         <copy file="${build.dir}/${ant.project.name}.jar" tofile="example/tools/jsbuilder.jar" />
     </target>
     
@@ -54,5 +54,5 @@
     </target>
     
 	<target name="build" depends="clean,compile,jar" />    
-    <target name="example" depends="build,update.example" />
+    <target name="example" depends="build.partial,update.example" />
 </project>
