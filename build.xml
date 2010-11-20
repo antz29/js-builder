@@ -13,7 +13,7 @@
 
 	<target name="compile" description="Compiles the Task">
 		<mkdir dir="${classes.dir}" />
-		<javac includeantruntime="true" srcdir="${src.dir}" destdir="${classes.dir}" classpath="${lib.dir}/commons-io.jar;${lib.dir}/log4j.jar;${lib.dir}/jcl-core.jar;${lib.dir}/compiler.jar" />
+		<javac includeantruntime="true" debug="true" debuglevel="{lines,vars,source}" srcdir="${src.dir}" destdir="${classes.dir}" classpath="${lib.dir}/commons-io.jar;${lib.dir}/log4j.jar;${lib.dir}/jcl-core.jar;${lib.dir}/compiler.jar" />
 	</target>
 
 	<target name="jar" description="JARs the Task" depends="compile">
@@ -36,12 +36,21 @@
 				<attribute name="Built-By" value="${user.name}" />
 			</manifest>
 		</jar>
-
-		<delete dir="${build.dir}/jar"/>
 	</target>
 
     <target name="update.example" description="Updates the example withe the latest build." depends="build">
         <copy file="${build.dir}/${ant.project.name}.jar" tofile="example/tools/jsbuilder.jar" />
+    </target>
+    
+    <target name="build.partial" depends="compile">        
+		<copy todir="${build.dir}/jar">
+			<fileset dir="${classes.dir}" />
+		</copy>
+		<jar flattenAttributes="true" destfile="${build.dir}/${ant.project.name}.jar" basedir="${build.dir}/jar">
+			<manifest>
+				<attribute name="Built-By" value="${user.name}" />
+			</manifest>
+		</jar>
     </target>
     
 	<target name="build" depends="clean,compile,jar" />    
