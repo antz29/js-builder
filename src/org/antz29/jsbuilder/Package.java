@@ -1,13 +1,12 @@
 package org.antz29.jsbuilder;
 
 import java.io.File;
-import java.util.Vector;
 
 public class Package {
 
 	private Builder builder;
 	private String name;
-	private Vector<Module> modules = new Vector<Module>();
+	private ModuleList modules = new ModuleList();
 
 	public Package setBuilder(Builder builder) {
 		this.builder = builder;
@@ -26,7 +25,7 @@ public class Package {
 	public String getName() {
 		return name;
 	}
-
+	
 	public Module addModule(String name, File file) {
 		Module new_module = new Module().setName(name).setFile(file)
 				.setPackage(this);
@@ -41,7 +40,7 @@ public class Package {
 		return modules.get(find_module);
 	}
 
-	public Vector<Module> getModules() {
+	public ModuleList getModules() {
 		return this.modules;
 	}
 

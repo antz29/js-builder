@@ -1,4 +1,4 @@
-package org.antz29.jsbuilder;
+package org.antz29.jsbuilder.ant;
 
 import java.io.File;
 

@@ -1,86 +1,91 @@
 package org.antz29.jsbuilder;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.util.Collections;
-import java.util.Hashtable;
-import java.util.Scanner;
-import java.util.Vector;
-import java.util.regex.MatchResult;
-import java.util.regex.Pattern;
+import java.util.HashMap;
+import java.util.HashSet;
 
-import org.antz29.jsbuilder.utils.StringUtils;
+import org.antz29.jsbuilder.parser.ParsedFile;
+import org.antz29.jsbuilder.parser.tokens.TokenList;
+import org.antz29.jsbuilder.plugins.PluginLoader;
+import org.antz29.jsbuilder.plugins.compiler.ClosureCompiler;
+import org.antz29.jsbuilder.plugins.packager.DefaultPackager;
+import org.antz29.jsbuilder.plugins.renderer.DefaultRenderer;
+import org.antz29.jsbuilder.plugins.types.CompilerPlugin;
+import org.antz29.jsbuilder.plugins.types.FileProcessor;
+import org.antz29.jsbuilder.plugins.types.ModuleProcessor;
+import org.antz29.jsbuilder.plugins.types.PackageProcessor;
+import org.antz29.jsbuilder.plugins.types.PackagerPlugin;
+import org.antz29.jsbuilder.plugins.types.ProcessorPlugin;
+import org.antz29.jsbuilder.plugins.types.RendererPlugin;
 import org.apache.tools.ant.BuildException;
-import org.apache.tools.ant.DirectoryScanner;
 import org.apache.tools.ant.Project;
-import org.apache.tools.ant.Task;
-import org.apache.tools.ant.types.FileSet;
 
-public class Builder extends Task {
-
-	public static final int MODE_DEV = 1;
-	public static final int MODE_PROD = 2;
+public class Builder {
 	
-	private Vector<FileSet> filesets = new Vector<FileSet>();
-	private Vector<Package> packages = new Vector<Package>();
-	private Vector<StaticModule> static_modules = new Vector<StaticModule>();
-
-	private boolean compile = true;
-	private int mode = MODE_PROD;
-	private File output;
+	private PluginLoader plugins;
 	
-	private RendererLoader renderer_loader;
-
-	public Project getAntProject() {
-		return getProject();
-	}
-
-	public void setCompile(boolean compile) {
-		this.compile = compile;
-	}	
+	private ModuleList modules = new ModuleList();
+	private PackageList packages = new PackageList();
+	private HashSet<OutputFile> output_files = new HashSet<OutputFile>();
 	
-	public boolean getCompile() {
-		return compile;
-	}	
+	private File base_dir;
+	private String output_pattern;
 	
-	public int getMode() {
-		return mode;
+	private static void log(Object msg) {
+		System.out.println(msg.toString());
 	}
 	
-	public File getOutput() {
-		return output;
+	public Builder(Project project) {
+		plugins = new PluginLoader(project);
+		plugins.regester(RendererPlugin.class,DefaultRenderer.class);
+		plugins.regester(PackagerPlugin.class,DefaultPackager.class);
+		plugins.regester(CompilerPlugin.class,ClosureCompiler.class);
+		plugins.regester(ProcessorPlugin.class);
 	}
 	
-	public void setMode(String mode) throws BuildException {
-		if (mode.equals("prod")) {
-			this.mode = MODE_PROD;
+	public void addPlugin(String cls, HashMap<String,String> properties) {
+		plugins.add(cls);
+		plugins.setProperties(cls, properties);
+	}
+	
+	public void addPlugin(String cls, File jar, HashMap<String,String> properties) {
+		plugins.add(cls,jar);
+		plugins.setProperties(cls,properties);
+	}
+
+	public void setBaseDir(File base) {
+		this.base_dir = base;
+	}
+	
+	public void setOutputPattern(String pattern) {
+		this.output_pattern = pattern;
+	}
+	
+	public void addFile(File file) {
+		ParsedFile pfile = new ParsedFile(file);
+		addFile(pfile);
+	}
+	
+	public void addFile(ParsedFile file) {
+		TokenList tokens = file.getTokens();
+		
+		if (tokens.get("MODULE") == null) {
+			log("WARNING: " + file.getName() + " has no MODULE token. Ignoring file.");
+			return;
 		}
-		else if (mode.equals("dev")) {
-			this.mode = MODE_DEV;
-		}
-		else {
-			throw new BuildException("Invalid mode: " + mode + " - User either 'dev' or 'prod'");
-		}
-	}
 
-	public void setOutput(File output) {
-		this.output = output;
+		String module_name = (String) tokens.get("MODULE").getValue();
+		String package_name = (tokens.get("PACKAGE") != null) ? (String) tokens.get("PACKAGE").getValue() : "default-package";
+		Package pkg = addPackage(package_name);
+		Module mod = pkg.addModule(module_name, file);
+		String[] deps = (tokens.get("DEPENDS") != null) ? tokens.get("DEPENDS").getArrayValue() : new String[0];
+		if (deps != null) {
+			mod.setUnresolvedDeps(deps);
+		}
+		log("Adding module " + mod);
+		modules.add(mod);
 	}
 	
-	public void addRenderer(RendererLoader loader) {
-		renderer_loader = loader;
-	}
-	
-	public void addModule(StaticModule module) {
-		static_modules.add(module);
-	}
-	
-	public void addFileSet(FileSet fileset) {
-		if (!filesets.contains(fileset))
-			filesets.add(fileset);
-	}
-
 	public Package findPackage(String search) {
 		Package found = null;
 		for (Package pkg : packages) {
@@ -103,7 +108,7 @@ public class Builder extends Task {
 		if (pkg == null)
 			return null;
 
-		Vector<Module> mods = pkg.getModules();
+		ModuleList mods = pkg.getModules();
 
 		Module found = null;
 		for (Module module : mods) {
@@ -112,55 +117,6 @@ public class Builder extends Task {
 			}
 		}
 		return found;
-	}
-
-	private Vector<File> getFiles() {
-		Vector<File> out = new Vector<File>();
-
-		for (FileSet fileset : filesets) {
-			DirectoryScanner ds = fileset.getDirectoryScanner(getProject());
-			File dir = ds.getBasedir();
-			String[] filesInSet = ds.getIncludedFiles();
-
-			for (String filename : filesInSet) {
-				File file = new File(dir, filename);
-				if (!out.contains(file))
-					out.add(file);
-			}
-		}
-
-		return out;
-	}
-
-	private Hashtable<String, String[]> parseFile(File file) {
-
-		Hashtable<String, String[]> tokens = new Hashtable<String, String[]>();
-		Scanner scanner;
-
-		Pattern pattern = Pattern
-				.compile("#(PACKAGE|MODULE|DEPENDS):([-._:A-Za-z0-9,\040]*)");
-
-		try {
-			scanner = new Scanner(new FileInputStream(file), "UTF-8");
-		} catch (FileNotFoundException e) {
-			return null;
-		}
-
-		try {
-			String next_token = scanner.findWithinHorizon(pattern, 1000);
-			while (next_token != null) {
-				MatchResult match = scanner.match();
-
-				String[] value = StringUtils.trimArray(match.group(2).split(","));
-				String token = match.group(1).trim();
-				tokens.put(token, value);
-
-				next_token = scanner.findWithinHorizon(pattern, 1000);
-			}
-			return tokens;
-		} finally {
-			scanner.close();
-		}
 	}
 
 	public Package addPackage(String name) {
@@ -174,158 +130,165 @@ public class Builder extends Task {
 		}
 
 		return packages.get(find_package);
+	} 
+
+	private void resolveDependencies()
+	{
+		log("Resolving dependencies...");		
+		modules.sort();
 	}
-
-	private void parsePackages(Vector<File> files) {
-		for (File file : files) {
-			Hashtable<String, String[]> tokens = parseFile(file);
-
-			if (tokens.get("MODULE") == null) {
-				getProject().log("WARNING: " + file.getName() + " has no MODULE token. Ignoring file.");
-				continue;
-			}
-
-			String module_name = tokens.get("MODULE")[0];
-			String package_name = (tokens.get("PACKAGE") != null) ? tokens
-					.get("PACKAGE")[0] : getProject().getName();
-
-			Package pkg = addPackage(package_name);
-			Module mod = pkg.addModule(module_name, file);
-
-			String[] deps = tokens.get("DEPENDS");
-			if (deps != null) {
-				mod.setUnresolvedDeps(deps);
-			}
+	
+	private void renderModules()
+	{
+		RendererPlugin[] renderers = plugins.get(RendererPlugin.class);
+		if (renderers.length > 1) {
+			log("WARNING: Multiple module renderer plugins have been defined, only using the first definition.");
+		}
+		log("Rendering " + modules.size() + " modules...");		
+		for (Module mod : modules) {
+			log("Rendering " + mod);
+			renderers[0].render(mod);
 		}
 	}
+	
+	private void packageFiles()
+	{
+		log("Packaging files...");
+		
+		PackagerPlugin[] packagers = plugins.get(PackagerPlugin.class);
+		
+		if (packagers.length > 1) {
+			log("WARNING: Multiple module packager plugins have been defined, only using the first definition.");
+		}
+		
+		PackagerPlugin packager = packagers[0];
+		
+		if (output_pattern.contains("{PACKAGE}") || output_pattern.contains("{MODULE}")) {
+			if (!packager.isDependencySafe())
+				log("WARNING: Packager " + packager.getClass().getName() + " is not dependency safe but " +
+						"we are making multiple files. You will need to ensure the multiple files generated " +
+						"are loaded in the correct order.");
+			
+			if (!output_pattern.contains("{MODULE}")) {
+				packagePackages(packager);
+				return;
+			}
+			
+			packageModules(packager);
+			return;
+		}
+		
+		packageToFile(packager);
+	}
+	
+	private void packageToFile(PackagerPlugin packager)
+	{	
+		if (!output_pattern.endsWith(".js")) {
+			log("WARNING: You are packaging to just one file but you have not specified the name defaulting to 'output.js'");
+			output_files.add(packager.packageModules(modules, this.base_dir, "output.js"));
+		}
+		else {
+			output_files.add(packager.packageModules(modules, this.base_dir,output_pattern));
+		}
+	}
+	
+	private void packagePackages(PackagerPlugin packager)
+	{
+		String base_path = output_pattern.replace(".min.js", ".js");
 
-	private Vector<Module> getLoadOrder() {
-		Vector<Module> order = new Vector<Module>();
+		boolean usePackageName = !base_path.endsWith(".js");
+		
+		for (Package pkg : packages) {
+			String path = base_path.replace("{PACKAGE}", pkg.getName());			
+			if (usePackageName) {
+				output_files.add(packager.packageModules(pkg.getModules(),this.base_dir,path + pkg.getName() + ".js"));				
+			}
+			else {				
+				output_files.add(packager.packageModules(pkg.getModules(),this.base_dir,path));
+			}
+		}		
+	}
+	
+	private void packageModules(PackagerPlugin packager)
+	{
+		String base_path = output_pattern.replace(".min.js", ".js");
+		
+		boolean useModuleName = !base_path.endsWith(".js");
 
 		for (Package pkg : packages) {
 			for (Module mod : pkg.getModules()) {
-				mod.resolveDeps();
-				order.add(mod);
-			}
-		}
-
-		Collections.sort(order);
-
-		return order;
-	}
-
-	private Vector<Module> verifyLoadOrder(Vector<Module> order) {
-
-		Vector<Module> bad_order = testLoadOrder(order);
-
-		int sanity = 0;
-
-		while (bad_order.size() > 0 && sanity < 10) {
-			sanity++;
-			order = fixLoadOrder(order, bad_order);
-			bad_order = testLoadOrder(order);
-		}
-
-		if (bad_order.size() > 0) {
-			getProject()
-					.log("WARNING: Failed to resolve dependencies for all modules (possible circular dependency?\n" +
-							"These modules have problems: " + bad_order);
-		}
-
-		return order;
-	}
-
-	private Vector<Module> testLoadOrder(Vector<Module> order) {
-		Vector<Module> order_test = new Vector<Module>();
-		Vector<Module> bad_order = new Vector<Module>();
-
-		for (Module mod : order) {
-			order_test.add(mod);
-			for (Module dep : mod.getDeps()) {
-				if (!order_test.contains(dep)) {
-					bad_order.add(mod);
+				String path = base_path.replace("{MODULE}", mod.getName()).replace("{PACKAGE}", pkg.getName());		
+				
+				if (useModuleName) {
+					output_files.add(packager.packageModule(mod,this.base_dir,path + mod.getName() + ".js"));				
 				}
+				else {
+					output_files.add(packager.packageModule(mod,this.base_dir,path));
+				}	
 			}
 		}
-
-		return bad_order;
-	}
-
-	private Integer getCorrectPosition(Vector<Module> order, Module mod) {
-		Vector<Integer> dep_locs = new Vector<Integer>();
-		Vector<Module> deps = mod.getDeps();
-
-		for (Module dep : deps) {
-			int loc = order.indexOf(dep);
-			if (loc == -1) {
-				getProject().log("WARNING: " + mod + " has unresolvable dependency: " + dep);
-				return 0;
-			}
-			dep_locs.add(loc);
-		}
-
-		Collections.sort(dep_locs);
-
-		return dep_locs.lastElement();
-	}
-
-	private Vector<Module> fixLoadOrder(Vector<Module> order,
-			Vector<Module> bad_order) {
-
-		for (Module mod : bad_order) {
-			int location = order.indexOf(mod);
-			order.remove(location);
-			int new_location = getCorrectPosition(order, mod);
-			order.add((new_location + 1), mod);
-		}
-
-		return order;
-	}
-
-	public void addStaticModule(StaticModule sm) {
-		Package pkg = this.addPackage(sm.getPackage());
-		Module mod = pkg.addModule(sm.getName(), sm.getFile());
-		mod.setUnresolvedDeps(sm.getDependencies());
-		
-		this.log("Added static module " + sm.getPackage() + ":" + sm.getName());
 	}
 	
-	private Renderer getRenderer() {
-		return renderer_loader.loadRenderer();
+	private void compileFiles() {
+		log("Compiling files...");
+		
+		CompilerPlugin[] compilers = plugins.get(CompilerPlugin.class);
+
+		if (compilers.length > 1) {
+			log("WARNING: Multiple module compiler plugins have been defined, only using the first definition.");
+		}
+		
+		CompilerPlugin compiler = compilers[0];
+		
+		HashSet<OutputFile> compiled = new HashSet<OutputFile>();		
+		for (OutputFile of : output_files) {			
+			compiled.add(compiler.compile(of));
+		}		
+		
+		output_files.addAll(compiled);
 	}
+	
+	private void process()
+	{	
+		ProcessorPlugin[] processors = plugins.get(ProcessorPlugin.class);
 		
-	public void execute() throws BuildException {
-		Vector<File> files = getFiles();			
-		
-		getProject().log("Mode: " + mode);
-		getProject().log("Output: " + output.getAbsolutePath());
-		getProject().log("Processing " + files.size() + " file(s)");
-		if (static_modules.size() > 0) {
-			getProject().log("Defined " + static_modules.size() + " static module(s)");
-		}
-		getProject().log("\n");
-		
-		for (StaticModule sm : static_modules)
-		{
-			this.addStaticModule(sm);
+		if (processors.length == 0) {
+			log("No processors defined!");
+			return;
 		}
 		
-		parsePackages(files);
-		
-		Vector<Module> order = getLoadOrder();
-		order = verifyLoadOrder(order);
-		
-		Renderer renderer;
-		if (renderer_loader == null)
-		{
-			renderer = new DefaultRenderer();
+		for (ProcessorPlugin processor : processors) {
+			if (processor instanceof ModuleProcessor) {
+				log("Processing modules...");
+				ModuleProcessor.class.cast(processor).processModules(modules,this.base_dir);
+			}
+			if (processor instanceof PackageProcessor) {
+				log("Processing packages...");
+				PackageProcessor.class.cast(processor).processPackages(packages,this.base_dir);
+			}
+			if (processor instanceof FileProcessor) {
+				log("Processing files...");
+				FileProcessor.class.cast(processor).processFiles(output_files,this.base_dir);
+			}
 		}
-		else {
-			renderer = getRenderer();
+	}
+	
+	// RenderModules -> PackageFiles -> [CompileFiles] -> [ProcessFiles] -> WriteData
+	public void build() throws BuildException {
+
+		resolveDependencies();
+		renderModules();
+		packageFiles();
+	
+		boolean compile = output_pattern.endsWith(".min.js");
+		if (compile) compileFiles();
+
+		process();
+
+		log("Writing files to disk...");
+		for (OutputFile of : output_files) {
+			log(of);
+			of.save();
 		}
-				
-		renderer.setBuilder(this);		
-		renderer.renderPackages(packages, order);
-		renderer.renderRules(packages, order);
 	}
 }

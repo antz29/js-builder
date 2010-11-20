@@ -1,17 +1,17 @@
 package org.antz29.jsbuilder;
 
 import java.io.File;
-import java.util.Vector;
-
-import org.apache.tools.ant.Project;
+import java.util.ArrayList;
 
 public class Module implements Comparable<Module> {
 
 	private Package pkg;
 	private String name;
 	private File file;
-	private Vector<Module> deps = new Vector<Module>();
+	private ArrayList<Module> deps = new ArrayList<Module>();
 	private String[] udeps;
+	
+	private String contents = "";
 
 	public Module setPackage(Package pkg) {
 		this.pkg = pkg;
@@ -40,10 +40,6 @@ public class Module implements Comparable<Module> {
 		return deps.size();
 	}
 
-	private Project getProject() {
-		return this.getPackage().getBuilder().getAntProject();
-	}
-
 	public boolean dependsOn(Module module) {
 		for (Module dep : deps) {
 			if (module.equals(dep))
@@ -62,8 +58,7 @@ public class Module implements Comparable<Module> {
 			if (find_module != null) {
 				deps.add(find_module);
 			} else {
-				getProject().log(
-						"WARNING: Unable to resolve dependency "
+				System.out.println("WARNING: Unable to resolve dependency "
 								+ this.getPackage().getName() + ":"
 								+ this.getName() + " > " + dep);
 			}
@@ -79,7 +74,7 @@ public class Module implements Comparable<Module> {
 		return this.file;
 	}
 
-	public Vector<Module> getDeps() {
+	public ArrayList<Module> getDeps() {
 		return deps;
 	}
 
@@ -87,6 +82,16 @@ public class Module implements Comparable<Module> {
 		return this.getPackage().getName() + ":" + this.getName();
 	}
 
+	public String getRenderedContents()
+	{
+		return contents;
+	}
+	
+	public void setRenderedContents(String contents)
+	{
+		this.contents = contents;
+	}
+	
 	@Override
 	public int hashCode() {
 		final int prime = 31;
