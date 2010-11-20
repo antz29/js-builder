@@ -61,6 +61,11 @@ public class Builder {
 		this.output_pattern = pattern;
 	}
 	
+	public void registerModule(Module mod) {
+		log("Registered module " + mod);
+		modules.add(mod);
+	}
+	
 	public void addFile(File file) {
 		ParsedFile pfile = new ParsedFile(file);
 		addFile(pfile);
@@ -82,8 +87,7 @@ public class Builder {
 		if (deps != null) {
 			mod.setUnresolvedDeps(deps);
 		}
-		log("Adding module " + mod);
-		modules.add(mod);
+		registerModule(mod);
 	}
 	
 	public Package findPackage(String search) {
@@ -134,17 +138,19 @@ public class Builder {
 
 	private void resolveDependencies()
 	{
-		log("Resolving dependencies...");		
+		log("\nResolving dependencies...");		
 		modules.sort();
 	}
 	
 	private void renderModules()
 	{
+		log("\nRendering " + modules.size() + " modules...");
+		
 		RendererPlugin[] renderers = plugins.get(RendererPlugin.class);
 		if (renderers.length > 1) {
 			log("WARNING: Multiple module renderer plugins have been defined, only using the first definition.");
 		}
-		log("Rendering " + modules.size() + " modules...");		
+				
 		for (Module mod : modules) {
 			log("Rendering " + mod);
 			renderers[0].render(mod);
@@ -153,7 +159,7 @@ public class Builder {
 	
 	private void packageFiles()
 	{
-		log("Packaging files...");
+		log("\nPackaging files...");
 		
 		PackagerPlugin[] packagers = plugins.get(PackagerPlugin.class);
 		
@@ -164,10 +170,6 @@ public class Builder {
 		PackagerPlugin packager = packagers[0];
 		
 		if (output_pattern.contains("{PACKAGE}") || output_pattern.contains("{MODULE}")) {
-			if (!packager.isDependencySafe())
-				log("WARNING: Packager " + packager.getClass().getName() + " is not dependency safe but " +
-						"we are making multiple files. You will need to ensure the multiple files generated " +
-						"are loaded in the correct order.");
 			
 			if (!output_pattern.contains("{MODULE}")) {
 				packagePackages(packager);
@@ -183,12 +185,14 @@ public class Builder {
 	
 	private void packageToFile(PackagerPlugin packager)
 	{	
+		String base_path = output_pattern.replace(".min.js", ".js");
+		
 		if (!output_pattern.endsWith(".js")) {
 			log("WARNING: You are packaging to just one file but you have not specified the name defaulting to 'output.js'");
 			output_files.add(packager.packageModules(modules, this.base_dir, "output.js"));
 		}
 		else {
-			output_files.add(packager.packageModules(modules, this.base_dir,output_pattern));
+			output_files.add(packager.packageModules(modules, this.base_dir,base_path));
 		}
 	}
 	
@@ -230,7 +234,7 @@ public class Builder {
 	}
 	
 	private void compileFiles() {
-		log("Compiling files...");
+		log("\nCompiling files...");
 		
 		CompilerPlugin[] compilers = plugins.get(CompilerPlugin.class);
 
@@ -252,10 +256,7 @@ public class Builder {
 	{	
 		ProcessorPlugin[] processors = plugins.get(ProcessorPlugin.class);
 		
-		if (processors.length == 0) {
-			log("No processors defined!");
-			return;
-		}
+		if (processors.length == 0) return;
 		
 		for (ProcessorPlugin processor : processors) {
 			if (processor instanceof ModuleProcessor) {
@@ -285,7 +286,7 @@ public class Builder {
 
 		process();
 
-		log("Writing files to disk...");
+		log("\nWriting files to disk...");
 		for (OutputFile of : output_files) {
 			log(of);
 			of.save();

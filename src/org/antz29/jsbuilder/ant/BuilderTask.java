@@ -27,9 +27,10 @@ public class BuilderTask extends Task {
 	public void addConfiguredModule(StaticModule module) {
 		Package pkg = builder.addPackage(module.getPackage());
 		Module mod = pkg.addModule(module.getName(), module.getFile());
-		mod.setUnresolvedDeps(module.getDependencies());
+		log("Processing static module " + mod);
 		
-		this.log("Added static module " + module.getPackage() + ":" + module.getName());
+		mod.setUnresolvedDeps(module.getDependencies());
+		builder.registerModule(mod);		
 	}
 	
 	public void addConfiguredSource(SourceElement source) {		

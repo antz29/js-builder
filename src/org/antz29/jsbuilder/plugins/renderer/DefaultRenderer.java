@@ -8,8 +8,6 @@ import org.antz29.jsbuilder.plugins.types.RendererPlugin;
 import org.apache.commons.io.FileUtils;
 
 public class DefaultRenderer implements RendererPlugin {
-
-	private HashMap<String,String> properties;
 	
 	@Override
 	public void render(Module module) {
@@ -28,8 +26,6 @@ public class DefaultRenderer implements RendererPlugin {
 	}
 
 	@Override
-	public void setProperties(HashMap<String,String> properties) {
-		this.properties = properties;
-	}
+	public void setProperties(HashMap<String,String> properties) {}
 
 }

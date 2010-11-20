@@ -8,6 +8,10 @@ public class ModuleList extends ArrayList<Module> {
 	private static final long serialVersionUID = 7621902711688116624L;
 	private boolean resolved = false;
 	
+	private void log(Object msg) {
+		System.out.println(msg.toString());
+	}
+	
 	public boolean add(Module mod)
 	{
 		if (!this.contains(mod)) return super.add(mod);
@@ -45,7 +49,7 @@ public class ModuleList extends ArrayList<Module> {
 		for (Module dep : deps) {
 			int loc = this.indexOf(dep);
 			if (loc == -1) {
-				System.out.println("WARNING: " + mod + " has unresolvable dependency: " + dep);
+				log("WARNING: " + mod + " has unresolvable dependency: " + dep);
 			}
 			dep_locs.add(loc);
 		}
@@ -72,7 +76,7 @@ public class ModuleList extends ArrayList<Module> {
 		if (!resolved) this.resolveAllDependencies();
 		
 		Collections.sort(this);
-		
+			
 		ArrayList<Module> bad_order = testLoadOrder();
 		
 		int sanity = 0;
@@ -84,7 +88,7 @@ public class ModuleList extends ArrayList<Module> {
 		}
 		
 		if (bad_order.size() > 0) {
-			System.out.println("WARNING: Failed to resolve dependencies for all modules (possible circular dependency?\n" + "These modules have problems: " + bad_order);
+			log("WARNING: Failed to resolve dependencies for all modules (possible circular dependency?\n" + "These modules have problems: " + bad_order);
 		}		
 	}
 

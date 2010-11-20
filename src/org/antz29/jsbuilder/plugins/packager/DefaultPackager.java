@@ -24,11 +24,6 @@ public class DefaultPackager implements PackagerPlugin {
 	}
 
 	@Override
-	public boolean isDependencySafe() {
-		return false;
-	}
-
-	@Override
 	public OutputFile packageModule(Module module, File path, String name) {
 		OutputFile out = new OutputFile(path,name);
 		out.addModule(module);
