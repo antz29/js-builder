@@ -24,7 +24,7 @@ public class DefaultRenderer implements RendererPlugin {
 		}
 		
 		// strip out JSBuilder comments
-		Pattern rx = Pattern.compile("^//\\s*#[A-Z]+:\\s*[a-z\\-\\,\\_]+$");
+		Pattern rx = Pattern.compile("(?m)^//\\s*#[A-Z]+:\\s*[a-z\\-\\,\\_\\s]+$");
 		Matcher matcher = rx.matcher(contents);
 		contents = matcher.replaceAll("");
 		
